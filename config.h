@@ -64,7 +64,7 @@ static const char *termcmd[]  = { "st", NULL };
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ 0,                            0,   0,        {0} },
+	{ MODKEY,                            XK_y,   0,        {0} },
 };
 
 /* button definitions */
