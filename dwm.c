@@ -203,6 +203,7 @@ static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
+static void smartborders(Client *c, int num);
 static void showhide(Client *c);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
@@ -1111,8 +1112,10 @@ monocle(Monitor *m)
 			n++;
 	if (n > 0) /* override layout symbol */
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
-	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
+	for (c = nexttiled(m->clients); c; c = nexttiled(c->next)) {
+        smartborders(c, -1);
 		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+    }
 }
 
 void
@@ -1610,6 +1613,41 @@ seturgent(Client *c, int urg)
 	XFree(wmh);
 }
 
+void 
+smartborders(Client *c, int num)
+{
+    if (c == NULL) return;
+    if (!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) {
+        if (!c->bw)
+            c->bw = c->oldbw;
+        else {
+            c->oldbw = c->bw;
+            c->bw = 0;
+        }
+        return;
+    }
+
+    if (c->isfullscreen || c->mon->lt[c->mon->sellt] == &layouts[2]) {
+        if (c->bw) {
+            c->oldbw = c->bw;
+            c->bw = 0;
+        }
+        return;
+    }
+
+    if (c->mon->lt[c->mon->sellt] == &layouts[0]) {
+        if (num == 1) {
+            if (c->bw) {
+                c->oldbw = c->bw;
+                c->bw = 0;
+            }
+        } else {
+            if (!c->bw)
+                c->bw = c->oldbw;
+        }
+    }
+}
+
 void
 showhide(Client *c)
 {
@@ -1684,7 +1722,9 @@ tile(Monitor *m)
 		mw = m->nmaster ? m->ww * m->mfact : 0;
 	else
 		mw = m->ww;
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
+
+	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+        smartborders(c, n);
 		if (i < m->nmaster) {
 			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
 			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
@@ -1694,6 +1734,7 @@ tile(Monitor *m)
 			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
 			ty += HEIGHT(c);
 		}
+    }
 }
 
 void
@@ -1713,6 +1754,7 @@ togglefloating(const Arg *arg)
 	if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
 		return;
 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
+    smartborders(selmon->sel, -1);
 	if (selmon->sel->isfloating)
 		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
 			selmon->sel->w, selmon->sel->h, 0);
